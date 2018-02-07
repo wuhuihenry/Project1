@@ -1,0 +1,255 @@
+#define _DANIEL_MUSIC_C_
+//#include "reg51.h"
+//#include "daniel.h"
+//P0口点阵行信号，P2口点阵列信号。P3.2接收红外数据。P3.6驱动buzz
+//#include<AT89X51.H>
+#define uchar unsigned char
+#define TIMES 500
+uchr YKDatas[3];
+uchar cmmd=0;
+uchar code num[14][8]={{0x00,0x00,0x3e,0x45,0x49,0x51,0x3e,0x00},
+			{0x00,0x00,0x00,0x40,0x7f,0x42,0x00,0x00},
+			{0x00,0x00,0x46,0x49,0x51,0x61,0x42,0x00},
+			{0x00,0x00,0x31,0x4b,0x45,0x41,0x21,0x00},
+			{0x00,0x00,0x10,0x7f,0x12,0x14,0x18,0x00},
+			{0x00,0x00,0x39,0x45,0x45,0x45,0x27,0x00},
+			{0x00,0x00,0x30,0x49,0x49,0x4a,0x3c,0x00},
+			{0x00,0x00,0x03,0x05,0x79,0x01,0x00,0x00},
+			{0x00,0x00,0x36,0x49,0x49,0x49,0x36,0x00},
+			{0x00,0x00,0x1e,0x29,0x49,0x49,0x06,0x00},
+			{0x00,0x00,0x1e,0x29,0x49,0x49,0x06,0x00},
+			{0xff,0x81,0x81,0x81,0x81,0x81,0x81,0xff},
+			{0x00,0x00,0x1e,0x29,0x49,0x49,0x06,0x00},
+			{0x00,0x00,0x1e,0x29,0x49,0x49,0x06,0x00}};
+uchar dut[3][8]={{0x00,0x00,0x3e,0x41,0x41,0x7f,0x41,0x00},
+		{0x00,0x00,0x3f,0x40,0x40,0x40,0x3f,0x00},
+		{0x00,0x00,0x01,0x01,0x7f,0x01,0x01,0x00}}; 
+uchar time[2][10]={{0xf9,0xf9,0xfa,0xfa,0xfb,0xfb,0xfc,0xfc,0xfc,0xfd},
+		{0xef,0xde,0x89,0xd8,0x68,0xe8,0x5a,0x8f,0xef,0x44}};
+uchar name[2][8]={{0x00,0x7f,0x08,0x08,0x08,0x7f,0x00,0x00},
+		{0x00,0x01,0x3f,0x41,0x40,0x20,0x00,0x00}};
+unsigned int xh[9]={2,0,0,8,8,1,5,1,0};
+int ptr=0;
+unsigned char code drm[3][26]={{0x00,0x00,0xF9,0x1F,0xF9,0xDE,0xFA,0x89,0xFA,0xD8,0xFB,0x68,0xFB,0xE8,0xFC,0x5A,0xF9,0x81,0xFA,0x36,0xFB,0x22,0xFB,0xAA,0xFC,0x23},
+				{0x00,0x00,0xFC,0x8F,0xFC,0xEF,0xFD,0x44,0xFD,0x6C,0xFD,0xB4,0xFD,0xF4,0xFE,0x20,0xFC,0xC0,0xFB,0x22,0xFD,0x91,0xFD,0xD5,0xFE,0x11},
+				{0x00,0x00,0xFE,0x47,0xFE,0x77,0xFE,0xB6,0xFE,0xB6,0xFE,0xDA,0xFE,0xFA,0xFF,0x16,0xFE,0x77,0xFE,0xEB,0xFE,0xC8,0xFE,0xEA,0xFF,0x08}};
+int  code  music[]={0,4,0,4,0,4,0,0,0,11,0,11,0,11,0,0,0,12,0,12,0,12,0,12,0,12,0,12,0,12,0,0,0,5,0,5,0,5,0,5,0,5,0,5,0,0,0,9,0,9,0,9,0,0,0,4,0,4,0,4,0,4,0,0,0,4,0,11,0,12,0,0,0,12,1,1,1,9,1,1,0,12,1,1,0,4,0,4,0,4,0,0,1,1,1,1,1,1,0,0,0,5,0,5,0,5,0,0,0,4,0,11,0,12,0,12,0,12,0,12,0,12,0,12,0,0,0,5,0,5,0,5,0,5,0,5,0,0,0,0,0,9,0,9,0,9,0,0,0,4,0,4,0,0,0,0,0,0,0,4,0,11,0,12,0,0,0,12,1,1,1,9,1,1,0,12,1,5,1,12,1,12,1,12,1,12,0,0,3,};
+unsigned int count=0;
+sbit YKIn = P3^2;
+sbit P3_6 = P3^6; 
+uchar YKcount,YKtype;
+bit YKend;
+void delayMs(unsigned int a)
+{
+	unsigned int i,j;
+	for(i = a; i > 0; i--)
+		for(j = 100; j > 0; j--);
+} 
+void  YKInit() 
+{
+	YKDatas[0] = YKDatas[1] = YKDatas[2] = 0;
+	YKcount = 0;
+	YKtype = 0;
+	YKend = 0;
+}
+ 
+void time0() interrupt 1 
+{   
+	bit in = ~YKIn;
+	TH0 = 249;TL0 = 153; 
+  	YKDatas[YKtype]= YKDatas[YKtype] | in;
+  	YKcount++;
+   if(YKcount == 3)
+ 	{YKtype = 1;}
+  	else if(YKcount == 8)
+  	{YKtype = 2;}
+ 	else if(YKcount == 14) 
+  	{YKtype = 3;}
+  	else if(YKtype == 3) 
+   	{YKend = 1;YKcount = 0;
+      	YKtype = 0;TR0 = 0; return;}
+	else
+  	{YKDatas[YKtype]= YKDatas[YKtype] << 1;}
+}
+void display()
+{	
+	unsigned int i;
+	uchar circle=0x80;
+	P2=~circle;
+	for(i=0;i<=7;i++)
+	{	P0= ~num[cmmd][i];
+		P0= ~num[cmmd][i];
+		P0= ~num[cmmd][i];
+		P0= ~num[cmmd][i];
+		P0= ~num[cmmd][i];
+		P0= ~num[cmmd][i];
+		P0= ~num[cmmd][i];
+circle=circle>>1;
+		P0=0xff;P2=~circle;
+	}
+	return;
+}
+void time1() interrupt 3
+{		
+	if(cmmd==10)
+		{
+		TH1=drm[music[ptr]][music[ptr+1]*2];
+		TL1=drm[music[ptr]][music[ptr+1]*2+1];P3_6=~P3_6;
+		}
+	else
+		{
+		P3_6=~P3_6;
+		++count;
+		TH1 = time[0][cmmd];
+		TL1 = time[1][cmmd];
+		}
+	if(count>TIMES)
+	{
+	TR1=0;	count=0;
+	P3_6=1;	
+	}
+	return;
+}
+/****output dut **********/ 
+void dut0()
+{
+	int i,j;
+	uchar cr=0x80,row,column;
+	column=~cr;
+	for(j=0;j<3800;j++)
+	{	
+		for(i=0,cr=0x80;i<=7;i++)
+		{
+			P2=column;row=dut[0][i];
+			P0=~row;cr=cr>>1;
+			row=0xff;P0=row;
+			column=~cr;	
+		}
+	}
+	for(j=0;j<3800;j++)
+	{
+		for(i=0,cr=0x80;i<=7;i++)
+		{
+			P2=column;
+			row=dut[1][i];P0=~row;
+			cr=cr>>1;row=0xff;
+			P0=row;column=~cr;
+		}
+	}
+	for(j=0;j<3800;j++)
+	{
+		for(i=0,cr=0x80;i<=7;i++)
+		{
+			P2=column;
+			row=dut[2][i];
+			P0=~row;cr=cr>>1;
+			row=0xff;P0=row;
+			column=~cr;
+		}
+	}
+}
+/*******output xh*****/ 
+void xh0()
+{
+	int j,k;
+	for(j=0;j<=8;j++)
+	{
+		cmmd=xh[j];
+		for(k=0;k<1500;k++)
+		display();
+		TH1 = time[0][cmmd];
+		TL1 = time[1][cmmd];
+		TR1 = 1;delayMs(400);
+	}
+}
+/******output name*******/ 
+void name0()
+{	
+	int i,j,k;
+	uchar shiftname[8];
+	uchar cr=0x80,row,column;
+	for(i=0;i<=7;i++)
+	shiftname[i]=name[0][i];
+	column=~cr;
+	for(k=0;k<=7;k++)
+	{	
+		for(j=0;j<1500;j++)
+		{	
+			for(i=0,cr=0x80;i<=7;i++)
+			{
+			P2=column;
+			row=shiftname[i];
+			P0=~row;cr=cr>>1;
+			row=0xff;P0=row;
+			column=~cr;
+			}
+		}
+	}
+	for(i=0;i<=7;i++)	
+	shiftname[i]*=2;
+	for(i=0;i<=7;i++)
+	shiftname[i]=name[1][i];
+	column=~cr;
+	for(k=0;k<=7;k++)
+	{	
+		for(j=0;j<1500;j++)
+		{		
+			for(i=0,cr=0x80;i<=7;i++)
+			{
+			P2=column;
+			row=shiftname[i];
+			P0=~row;
+			cr=cr>>1;
+			row=0xff;
+			P0=row;
+			column=~cr;
+			}
+		}
+	}				
+	for(i=0;i<=7;i++)
+	shiftname[i]*=2;
+ }
+/********main*********/ 
+void main()
+{		
+	int i;
+	TMOD=0x11;
+	IE=0x8a; 		 
+  	YKIn=1;
+	dut0();
+	name0();
+	xh0();
+	TR1=0;
+	cmmd=11;
+	while(1) 
+	{
+		YKInit();  
+   		TH0=254;
+		TL0=102;
+	}
+	while(YKIn) 
+	display();
+ 	TR0 = 1;
+ 	while(!YKend);
+  	cmmd=YKDatas[2]; 
+	TH1 = time[0][cmmd]; 
+	TL1 = time[1][cmmd];
+	TR1 = 1;
+	delayMs(500);
+	if(cmmd==10)
+	{		
+		for(i=0;music[ptr]!=3/*music[ptr]!=0x00&&music[ptr+1]!=0*/;i++)
+		{
+		TH1=drm[music[ptr]][music[ptr+1]*2]; 
+		TL1=drm[music[ptr]][music[ptr+1]*2+1];
+		if(TH1!=0x00&&TL1!=0x00)
+		TR1=1;
+		delayMs(200);
+		TR1=0;
+		P3_6=1;
+		delayMs(1);
+		ptr+=2;
+		}
+	}
+        delayMs(30);
+}
